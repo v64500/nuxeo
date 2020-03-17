@@ -20,7 +20,9 @@ package org.nuxeo.lib.stream.computation.log;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -65,9 +67,10 @@ public class LogStreamManager implements StreamManager {
         log.debug("Register processor: " + processorName);
         topologies.put(processorName, topology);
         this.settings.put(processorName, settings);
-        initStreams(topology, settings);
-        initAppenders(topology, settings);
-        registerFilters(topology, settings);
+        Set<String> streams = topology.streamsSet();
+        initStreams(streams, settings);
+        initAppenders(streams, settings);
+        registerFilters(streams, settings);
     }
 
     @Override
@@ -97,6 +100,13 @@ public class LogStreamManager implements StreamManager {
         LogOffset offset = logManager.getAppender(stream).append(record.getKey(), record);
         filter.afterAppend(record, offset);
         return offset;
+    }
+
+    @Override
+    public void register(List<String> streams, Settings settings) {
+        initStreams(streams, settings);
+        initAppenders(streams, settings);
+        registerFilters(streams, settings);
     }
 
     public boolean supportSubscribe() {
@@ -133,38 +143,39 @@ public class LogStreamManager implements StreamManager {
         return codec;
     }
 
-    protected void initStreams(Topology topology, Settings settings) {
+    protected void initStreams(Collection<String> streams, Settings settings) {
         log.debug("Initializing streams");
-        topology.streamsSet().forEach(streamName -> {
-            if (settings.isExternal(streamName)) {
-                return;
-            }
-            if (!logManager.exists(streamName)) {
-                logManager.createIfNotExists(streamName, settings.getPartitions(streamName));
-            } else {
-                int size = logManager.size(streamName);
-                if (settings.getPartitions(streamName) != size) {
-                    log.debug(String.format(
-                            "Update settings for stream: %s defined with %d partitions but exists with %d partitions",
-                            streamName, settings.getPartitions(streamName), size));
-                    settings.setPartitions(streamName, size);
-                }
-            }
-        });
+        streams.forEach(streamName -> initStream(streamName, settings));
     }
 
-    protected void initAppenders(Topology topology, Settings settings) {
+    private void initStream(String streamName, Settings settings) {
+        if (settings.isExternal(streamName)) {
+            return;
+        }
+        if (!logManager.exists(streamName)) {
+            logManager.createIfNotExists(streamName, settings.getPartitions(streamName));
+        } else {
+            int size = logManager.size(streamName);
+            if (settings.getPartitions(streamName) != size) {
+                log.debug(String.format(
+                        "Update settings for stream: %s defined with %d partitions but exists with %d partitions",
+                        streamName, settings.getPartitions(streamName), size));
+                settings.setPartitions(streamName, size);
+            }
+        }
+    }
+
+    protected void initAppenders(Collection<String> streams, Settings settings) {
         log.debug("Initializing source appenders so we ensure they use codec defined in the processor");
-        topology.streamsSet()
-                .forEach(stream -> {
+        streams.forEach(stream -> {
                     if (!settings.isExternal(stream)) {
                         logManager.getAppender(stream, settings.getCodec(stream));
                     }
                 });
     }
 
-    protected void registerFilters(Topology topology, Settings settings) {
-        topology.streamsSet().forEach(stream -> {
+    protected void registerFilters(Collection<String> streams, Settings settings) {
+        streams.forEach(stream -> {
             if (!settings.isExternal(stream)) {
                 filters.put(stream, settings.getFilterChain(stream));
             }
