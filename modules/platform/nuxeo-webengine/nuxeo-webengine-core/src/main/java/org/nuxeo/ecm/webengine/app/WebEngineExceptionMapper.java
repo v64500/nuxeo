@@ -18,10 +18,12 @@
  */
 package org.nuxeo.ecm.webengine.app;
 
+import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_FORBIDDEN;
 import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
@@ -99,6 +101,8 @@ public class WebEngineExceptionMapper implements ExceptionMapper<Throwable> {
             return e.getStatusCode();
         } else if (t instanceof SecurityException) {
             return SC_FORBIDDEN;
+        } else if (t instanceof IllegalArgumentException) {
+            return SC_BAD_REQUEST;
         }
 
         Throwable cause = t.getCause();
