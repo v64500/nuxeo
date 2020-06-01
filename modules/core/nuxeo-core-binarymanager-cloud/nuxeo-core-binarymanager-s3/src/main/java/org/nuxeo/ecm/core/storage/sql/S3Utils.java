@@ -125,7 +125,9 @@ public class S3Utils {
      * @param targetSSEAlgorithm the target SSE Algorithm to use, or {@code null}
      * @param deleteSource whether to delete the source object if the copy is successful
      * @since 11.1
+     * @deprecated since 11.2
      */
+    @Deprecated
     public static ObjectMetadata copyFile(AmazonS3 amazonS3, ObjectMetadata objectMetadata, String sourceBucket,
             String sourceKey, String targetBucket, String targetKey, String targetSSEAlgorithm, boolean deleteSource) {
         if (objectMetadata.getContentLength() > NON_MULTIPART_COPY_MAX_SIZE) {
@@ -168,7 +170,9 @@ public class S3Utils {
      * @param targetSSEAlgorithm the target SSE Algorithm to use, or {@code null}
      * @param deleteSource whether to delete the source object if the copy is successful
      * @since 11.1
+     * @deprecated since 11.2
      */
+    @Deprecated
     public static ObjectMetadata copyFileMultipart(AmazonS3 amazonS3, ObjectMetadata objectMetadata,
             String sourceBucket, String sourceKey, String targetBucket, String targetKey, String targetSSEAlgorithm,
             boolean deleteSource) {
@@ -249,7 +253,9 @@ public class S3Utils {
      * @param targetSSEAlgorithm the target SSE Algorithm to use, or {@code null}
      * @param deleteSource whether to delete the source object if the copy is successful
      * @since 11.1
+     * @deprecated since 11.2
      */
+    @Deprecated
     public static ObjectMetadata copyFileNonMultipart(AmazonS3 amazonS3, ObjectMetadata objectMetadata, String sourceBucket,
             String sourceKey, String targetBucket, String targetKey, String targetSSEAlgorithm, boolean deleteSource) {
         CopyObjectRequest copyObjectRequest = new CopyObjectRequest(sourceBucket, sourceKey, targetBucket, targetKey);
