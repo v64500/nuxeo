@@ -59,6 +59,8 @@ public class PositionCommand extends Command {
 
     public static final String TO_WATERMARK_OPT = "to-watermark";
 
+    public static final String TO_OFFSET_OPT = "to-offset";
+
     protected static long getTimestampFromDate(String dateIso8601) {
         if (dateIso8601 == null || dateIso8601.isEmpty()) {
             return -1;
@@ -89,7 +91,7 @@ public class PositionCommand extends Command {
                                 .build());
         options.addOption(Option.builder("p")
                                 .longOpt("partition")
-                                .desc("Read only this partition")
+                                .desc("The log partition")
                                 .hasArg()
                                 .argName("PARTITION")
                                 .build());
@@ -124,6 +126,13 @@ public class PositionCommand extends Command {
                       .hasArg()
                       .argName("DATE")
                       .build());
+        options.addOption(Option.builder()
+                                .longOpt(TO_OFFSET_OPT)
+                                .desc("Sets the committed positions to a specific offset."
+                                        + " When restarted the consumer will continue on the next record.")
+                                .hasArg()
+                                .argName("OFFSET")
+                                .build());
     }
 
     @Override
@@ -141,6 +150,9 @@ public class PositionCommand extends Command {
             if (timestamp >= 0) {
                 return positionToWatermark(manager, group, name, partition, timestamp);
             }
+        } else if (cmd.hasOption(TO_OFFSET_OPT)) {
+            long offset = Long.parseLong(cmd.getOptionValue(TO_OFFSET_OPT));
+            return positionToOffset(manager, group, name, partition, offset);
         } else if (cmd.hasOption("to-end")) {
             return toEnd(manager, group, name, partition);
         } else if (cmd.hasOption("reset")) {
@@ -212,7 +224,7 @@ public class PositionCommand extends Command {
                 }
                 tailer.seek(logOffset);
                 movedOffset = true;
-                log.info(String.format("# Set log %s, group: %s, to offset %s", labelFor(name, part), group,
+                log.warn(String.format("# Set log %s, group: %s, to offset %s", labelFor(name, part), group,
                         logOffset.offset()));
             }
             if (movedOffset) {
@@ -280,4 +292,38 @@ public class PositionCommand extends Command {
         return lastOffset;
     }
 
+    protected boolean positionToOffset(LogManager manager, Name group, Name name, int partition, long offset) {
+        LogLag lag = getLag(manager, group, name, partition);
+        long pos = lag.lower();
+        boolean goToStart = false;
+        if (offset < pos) {
+            goToStart = true;
+        } else if (offset == pos) {
+            log.error(String.format("Current offset for group %s on %s is already %d", group, labelFor(name, partition),
+                    pos));
+            return false;
+        }
+        try (LogTailer<Externalizable> tailer = manager.createTailer(group, LogPartition.of(name, partition))) {
+            if (goToStart) {
+                tailer.toStart();
+            }
+            for (;;) {
+                LogRecord<Externalizable> record = tailer.read(Duration.ofSeconds(1));
+                if (record == null || record.offset().offset() > offset) {
+                    log.error("No offset found for the specified partition");
+                    return false;
+                }
+                if (record.offset().offset() == offset) {
+                    tailer.commit();
+                    log.warn(String.format("# Move group %s on %s from %d to %d", group, labelFor(name, partition), pos,
+                            offset));
+                    return true;
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrupted");
+            return false;
+        }
+    }
 }
