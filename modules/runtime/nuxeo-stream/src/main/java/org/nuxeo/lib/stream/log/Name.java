@@ -115,8 +115,7 @@ public class Name {
 
     @Override
     public String toString() {
-        return "Name{" + "namespace='" + namespace + '\'' + ", name='" + name + '\'' + ", id='" + id + '\'' + ", urn='"
-                + urn + '\'' + '}';
+        return "Name{" + "id='" + id + '\'' + ", urn='" + urn + '\'' + '}';
     }
 
     protected static void checkLogName(String name) {
