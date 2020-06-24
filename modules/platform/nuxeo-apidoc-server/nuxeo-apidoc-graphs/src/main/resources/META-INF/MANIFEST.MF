@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 1
+Bundle-Name: nuxeo api documentation graphs
+Bundle-SymbolicName: org.nuxeo.apidoc.graphs;singleton:=true
+Bundle-Version: 0.0.1
+Bundle-Vendor: Nuxeo
