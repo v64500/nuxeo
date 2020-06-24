@@ -46,6 +46,7 @@ import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.ClassUtils;
+import org.apache.kafka.common.protocol.types.Field;
 import org.nuxeo.ecm.core.io.marshallers.json.ExtensibleEntityJsonWriter;
 import org.nuxeo.ecm.core.io.marshallers.json.enrichers.AbstractJsonEnricher;
 import org.nuxeo.ecm.core.io.registry.reflect.Setup;
@@ -147,20 +148,15 @@ public class LogEntryJsonWriter extends ExtensibleEntityJsonWriter<LogEntry> {
             jg.writeObjectField(key, value);
         } else if (Map.class.isAssignableFrom(clazz)) {
             @SuppressWarnings("unchecked")
-            Map<String, Serializable> map = //
-                    ((Map<String, Serializable>) value).entrySet()
-                                                       .stream()
-                                                       // keep primitive values
-                                                       // blobs can be in WorkflowVariables for instance
-                                                       .filter(entry -> entry.getValue() != null
-                                                               && ClassUtils.isPrimitiveOrWrapper(
-                                                                       entry.getValue().getClass()))
-                                                       .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-            jg.writeObjectField(key, map);
+            Map<String,Serializable> map = (Map<String, Serializable>) value;
+            jg.writeObjectFieldStart(key);
+            for(Entry<String,Serializable> entry : map.entrySet()) {
+                writeExtendedInfo(jg,entry.getKey(),entry.getValue());
+            }
+            jg.writeEndObject();
         } else {
             // mainly blobs
             jg.writeStringField(key, value.toString());
         }
     }
-
 }
